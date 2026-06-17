@@ -1,0 +1,40 @@
+{
+	"name": "@nym.sh/jrpc",
+	"version": "0.1.0",
+	"description": "Typed JSON-RPC over async channels.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/kennethnym/jrpc"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "rm -rf dist && bun build index.ts --outdir=dist --target=node --format=esm && tsc -p tsconfig.build.json",
+		"fmt": "oxfmt",
+		"fmt:check": "oxfmt --check",
+		"lint": "oxlint",
+		"lint:fix": "oxlint --fix",
+		"test": "bun test",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"oxfmt": "^0.55.0",
+		"oxlint": "^1.70.0",
+		"typescript": "^6.0.3"
+	}
+}

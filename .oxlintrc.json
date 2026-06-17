@@ -1,0 +1,12 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc"],
+	"categories": {
+		"correctness": "error"
+	},
+	"ignorePatterns": [".bun-install/**", ".bun-tmp/**", "coverage/**", "dist/**", "out/**"],
+	"rules": {},
+	"env": {
+		"builtin": true
+	}
+}
