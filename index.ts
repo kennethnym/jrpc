@@ -4,6 +4,14 @@ import type { JsonRpcErrorCode as JsonRpcErrorCodeValue } from "./error"
 export { JsonRpcClient } from "./client"
 export { JsonRpcRemoteError } from "./error"
 export { JsonRpcServer } from "./server"
+export {
+	deserializeJrpcMessage,
+	isJrpcMessage,
+	isJsonRpcErrorResponse,
+	isJsonRpcRequest,
+	isJsonRpcResponse,
+	isJsonRpcSuccessResponse,
+} from "./transport"
 export const JsonRpcErrorCode = JsonRpcErrorCodes
 export type JsonRpcErrorCode = JsonRpcErrorCodeValue
 export type { JsonRpcErrorObject } from "./error"

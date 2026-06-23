@@ -5,7 +5,7 @@ export interface JsonRpcRequest {
 	jsonrpc: "2.0"
 	id: number
 	method: string
-	params?: unknown[]
+	params?: unknown
 }
 
 export interface JsonRpcSuccessResponse {
@@ -239,20 +239,100 @@ export function getDispatcher(channel: JrpcChannel): JsonRpcTransport {
 	return dispatcher
 }
 
-function isJsonRpcRequest(msg: JsonRpcMessage): msg is JsonRpcRequest {
-	return Object.hasOwn(msg, "method")
+export function deserializeJrpcMessage(value: string): JrpcMessage | null {
+	let parsed: unknown
+
+	try {
+		parsed = JSON.parse(value)
+	} catch {
+		return null
+	}
+
+	if (!isJrpcMessage(parsed)) {
+		return null
+	}
+
+	return parsed
 }
 
-function isJsonRpcResponse(msg: JsonRpcMessage): msg is JsonRpcResponse {
-	return Object.hasOwn(msg, "result") || Object.hasOwn(msg, "error")
+export function isJrpcMessage(value: unknown): value is JrpcMessage {
+	return isJsonRpcRequest(value) || isJsonRpcResponse(value)
 }
 
-function isJsonRpcErrorResponse(msg: JsonRpcResponse): msg is JsonRpcErrorResponse {
-	return Object.hasOwn(msg, "error")
+export function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
+	if (!isJsonRpcObject(value)) {
+		return false
+	}
+
+	if (value.jsonrpc !== "2.0") {
+		return false
+	}
+
+	if (!isJsonRpcId(value.id)) {
+		return false
+	}
+
+	if (typeof value.method !== "string") {
+		return false
+	}
+
+	if (Object.hasOwn(value, "result") || Object.hasOwn(value, "error")) {
+		return false
+	}
+
+	return true
+}
+
+export function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
+	return isJsonRpcSuccessResponse(value) || isJsonRpcErrorResponse(value)
+}
+
+export function isJsonRpcSuccessResponse(value: unknown): value is JsonRpcSuccessResponse {
+	if (!isJsonRpcObject(value)) {
+		return false
+	}
+
+	return (
+		value.jsonrpc === "2.0" &&
+		isJsonRpcId(value.id) &&
+		Object.hasOwn(value, "result") &&
+		!Object.hasOwn(value, "error") &&
+		!Object.hasOwn(value, "method")
+	)
+}
+
+export function isJsonRpcErrorResponse(value: unknown): value is JsonRpcErrorResponse {
+	if (!isJsonRpcObject(value)) {
+		return false
+	}
+
+	return (
+		value.jsonrpc === "2.0" &&
+		isJsonRpcId(value.id) &&
+		isJsonRpcErrorObject(value.error) &&
+		!Object.hasOwn(value, "result") &&
+		!Object.hasOwn(value, "method")
+	)
 }
 
 function randomJsonRpcId(): number {
 	const [id = 0] = crypto.getRandomValues(new Uint32Array(1))
 
 	return id
+}
+
+function isJsonRpcObject(value: unknown): value is Record<PropertyKey, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isJsonRpcId(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value)
+}
+
+function isJsonRpcErrorObject(value: unknown): value is JsonRpcErrorObject {
+	if (!isJsonRpcObject(value)) {
+		return false
+	}
+
+	return Number.isFinite(value.code) && typeof value.message === "string"
 }

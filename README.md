@@ -78,6 +78,20 @@ interface JrpcChannel extends AsyncGenerator<JrpcMessage, void, unknown> {
 
 Each endpoint gets its own channel. Calling `send()` on one endpoint should deliver the message to the other endpoint's async iterator.
 
+For raw JSON transports, parse incoming payloads with `deserializeJrpcMessage()` instead of casting `JSON.parse()` yourself:
+
+```ts
+import { deserializeJrpcMessage } from "@nym.sh/jrpc"
+
+const msg = deserializeJrpcMessage(event.data)
+
+if (!msg) {
+	return
+}
+```
+
+The package also exports `isJrpcMessage()`, `isJsonRpcRequest()`, `isJsonRpcResponse()`, `isJsonRpcSuccessResponse()`, and `isJsonRpcErrorResponse()` when a channel adapter needs to validate or narrow an unknown value.
+
 Here is a minimal in-memory channel pair that is useful for tests and examples:
 
 ```ts
