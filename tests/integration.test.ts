@@ -1,5 +1,15 @@
 import { expect, test } from "bun:test"
-import { JsonRpcClient, JsonRpcErrorCode, JsonRpcRemoteError, JsonRpcServer } from "../index.ts"
+import {
+	deserializeJrpcMessage,
+	isJrpcMessage,
+	isJsonRpcErrorResponse,
+	isJsonRpcRequest,
+	isJsonRpcSuccessResponse,
+	JsonRpcClient,
+	JsonRpcErrorCode,
+	JsonRpcRemoteError,
+	JsonRpcServer,
+} from "../index.ts"
 import type { JrpcChannel, JrpcMessage, JsonRpcMessage } from "../transport.ts"
 
 type NextResult = IteratorResult<JrpcMessage, void>
@@ -166,6 +176,88 @@ async function resolveWithin<T>(promise: Promise<T>, ms: number): Promise<T> {
 		}
 	}
 }
+
+test("message helpers deserialize and narrow JSON-RPC messages", () => {
+	const request = deserializeJrpcMessage(
+		JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "ping",
+			params: [],
+		}),
+	)
+
+	expect(isJrpcMessage(request)).toBe(true)
+	expect(isJsonRpcRequest(request)).toBe(true)
+
+	if (!isJsonRpcRequest(request)) {
+		throw new Error("Expected request message.")
+	}
+
+	expect(request.method).toBe("ping")
+
+	const namedParamsRequest = deserializeJrpcMessage(
+		JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "ping",
+			params: {
+				named: true,
+			},
+		}),
+	)
+
+	expect(isJsonRpcRequest(namedParamsRequest)).toBe(true)
+
+	const success = deserializeJrpcMessage(
+		JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1,
+			result: "pong",
+		}),
+	)
+
+	expect(isJsonRpcSuccessResponse(success)).toBe(true)
+
+	if (!isJsonRpcSuccessResponse(success)) {
+		throw new Error("Expected success response message.")
+	}
+
+	expect(success.result).toBe("pong")
+
+	const error = deserializeJrpcMessage(
+		JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1,
+			error: {
+				code: JsonRpcErrorCode.InternalError,
+				message: "Nope.",
+			},
+		}),
+	)
+
+	expect(isJsonRpcErrorResponse(error)).toBe(true)
+
+	if (!isJsonRpcErrorResponse(error)) {
+		throw new Error("Expected error response message.")
+	}
+
+	expect(error.error.code).toBe(JsonRpcErrorCode.InternalError)
+})
+
+test("message helpers return null for invalid JSON-RPC messages", () => {
+	const invalidMessages = [
+		"null",
+		JSON.stringify([]),
+		JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping", result: null }),
+		JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: JsonRpcErrorCode.InternalError } }),
+		"{",
+	]
+
+	for (const message of invalidMessages) {
+		expect(deserializeJrpcMessage(message)).toBeNull()
+	}
+})
 
 interface EndpointAApi {
 	describe(name: string): string
@@ -348,7 +440,7 @@ test("server handles protocol edge cases through real channel messages", async (
 			id: 1,
 			method: "ping",
 		})
-		expect(await rawClient.receive()).toEqual({
+		expect(await resolveWithin(rawClient.receive(), 1000)).toEqual({
 			jsonrpc: "2.0",
 			id: 1,
 			result: "pong-without-params",
@@ -360,7 +452,7 @@ test("server handles protocol edge cases through real channel messages", async (
 			method: "toString",
 			params: [],
 		})
-		expect(await rawClient.receive()).toMatchObject({
+		expect(await resolveWithin(rawClient.receive(), 1000)).toMatchObject({
 			error: {
 				code: JsonRpcErrorCode.MethodNotFound,
 			},
@@ -372,9 +464,9 @@ test("server handles protocol edge cases through real channel messages", async (
 			jsonrpc: "2.0",
 			id: 3,
 			method: "ping",
-			params: { named: true } as unknown as unknown[],
+			params: { named: true },
 		})
-		expect(await rawClient.receive()).toMatchObject({
+		expect(await resolveWithin(rawClient.receive(), 1000)).toMatchObject({
 			error: {
 				code: JsonRpcErrorCode.InvalidParams,
 				message: "Params must be an array.",
