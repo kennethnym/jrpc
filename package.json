@@ -1,6 +1,6 @@
 {
 	"name": "@nym.sh/jrpc",
-	"version": "0.1.0",
+	"version": "1.1.0",
 	"description": "Typed JSON-RPC over async channels.",
 	"license": "MIT",
 	"repository": {
